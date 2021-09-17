@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+
+    body{
+      background-color: lightsteelblue;
+    }
+    h1.titleBig{
+      color: aqua;
+    }
+    .call-btn, .answer-btn{
+      color: rgb(10, 10, 1);
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+    .main{
+      width: 80%;
+      height: 100vh;
+      margin: 0 auto;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      align-content: space-between;
+      background-color: lightgray;
+     
+    }
+    .status{
+      width: 27%;
+      font-size: 30px;
+      display: inline-block;
+      justify-content: center;
+      padding: 5px;
+    }
+    .call{
+      width: 27%;
+      display: inline-block;
+      padding: 10px;
+      justify-content: center;
+    }
+    .video{
+      width: 46%;
+      display: inline-block;
+      justify-content: center;
+    }
+
+    .screen{
+      height: 50px;
+      width: 100%;
+      background-color: lightgreen;
+      font-size: larger;
+      font-weight: bold;
+    }
+    .num{
+      width: 100%;
+      justify-content: center;
+    }
+    .number, .remove{
+      padding: 05px 10px;
+      margin: 10px;
+      font-size: 25px;
+      border-radius: 5px;
+      background-color: lightblue;
+    }
+    .remove{
+      background-color: lightcoral;
+    }
+
+    form input{
+      width: 90%;
+      height: 40px;
+      border: 2px solid lightskyblue;
+      border-radius: 5px;
+    }
+
+    form>div{
+      padding: 5px;
+    }
+
+    #peer-video {
+      width: 100%;
+      background-color: lightsteelblue;
+    }
+    #my-video{
+      width: 100px;
+      height: 100px;
+      background-color: lightseagreen;
+      position: relative;
+      top: -100px;
+    }
+  </style>
+  <title>test jssip</title>
+</head>
+<body>
+
+  <h1 class="titleBig">
+    Test JsSIP
+  </h1>
+
+  <div class="main">
+    <!-- Status Part  -->
+    <div class="status">
+      <h5>User : <span class="profile"></span></h5>
+      <h5>status <span class="state">0</span></h5>
+      <form action="">
+        <div>
+          <label for="#user">User</label>
+          <input type="text" id="user" value="100">
+        </div>
+        <div>
+          <label for="#ipAddress">Server</label>
+          <input type="text" id="ipAddress" value="192.168.122.20">
+        </div>
+        <div>
+          <label for="#password">Password</label>
+          <input type="password" id="password" value="secret">
+        </div>
+        <input type="button" id="register" value="Register">
+      </form>
+    </div>
+    <!-- video part -->
+    <div class="video">
+      <video src="" id="peer-video" width="300" height="400"></video>
+      <video src="" id="my-video" width="200" height="200"></video>
+    </div>
+
+    <!-- Btn Part -->
+    <div class="call">
+      <div class="num">
+        <p class="screen" ></p>
+         
+        <button class="answer-btn">Answer</button>
+        <button class="call-btn">call</button>
+        <hr>
+        <button value="1" class="number">1</button>
+        <button value="2" class="number">2</button>
+        <button value="3" class="number">3</button>
+        <button value="4" class="number">4</button>
+        <button value="5" class="number">5</button>
+        <button value="6" class="number">6</button>
+        <button value="7" class="number">7</button>
+        <button value="8" class="number">8</button>
+        <button value="9" class="number">9</button>
+        <button value="0" class="number">0</button>
+        <button class="remove"><--</button>
+      </div>
+    </div>
+  </div>
+  
+
+
+  <script src="https://jssip.net/download/releases/jssip-3.8.1.min.js"></script>
+  <script>
+
+    //global variable 
+    var state = document.querySelector('.state');
+    var profile = document.querySelector('.profile');
+    var callBtn = document.querySelector('.call-btn');
+    var ansBtn = document.querySelector('.answer-btn');
+    var video = document.querySelector("#video");
+    var btn = document.querySelectorAll(".number");
+    var screen = document.querySelector(".screen");
+    var remove = document.querySelector(".remove");
+    var selfView =   document.getElementById('#my-video');
+    var remoteView =  document.querySelector('#peer-video');
+    var user = document.querySelector('#user');
+    var ipAddress = document.querySelector('#ipAddress');
+    var btnRegister = document.querySelector('#register')
+    var password = document.querySelector('#password')
+    var session = null;
+
+
+
+    
+   
+
+    // Register callbacks to desired call events
+    var eventHandlers = {
+      'progress': function(e) {
+        console.log('call is in progress',e);
+        screen.innerText = "In Porgress";
+        screen.style.backgroundColor="orange";
+
+      },
+      'failed': function(e) {
+        console.log('call failed with cause: ', e.cause);
+        screen.innerText = "Failed";
+        screen.style.backgroundColor="red";
+      },
+      'confirmed': function(e) {
+        screen.innerText = "Confirmed";
+        screen.style.backgroundColor="green";
+        selfView.src = window.URL.createObjectURL(session.connection.getLocalStreams()[0]);
+        selfView.play();
+        console.log('call confirmed',e);
+      },
+      'addstream':  function(e) {
+        let stream = e.stream;
+
+        // Attach remote stream to remoteView
+        remoteView.src = window.URL.createObjectURL(stream);
+        remoteView.play();
+        console.log('New stream : ',stream);
+      },
+      'ended':  function(e){ 
+        console.log('call ended with cause: '+ e.data.cause);
+      }
+    };
+
+    var options = {
+      'eventHandlers'    : eventHandlers,
+      'mediaConstraints' : { 'audio': true, 'video': true }
+    };
+
+     /**
+     * Starting registering
+    */
+
+    btnRegister.addEventListener('click',(st)=>{
+      st.preventDefault();
+
+
+      // Create our JsSIP instance and run it:
+      var socket = new JsSIP.WebSocketInterface(`wss://${ipAddress.value.trim()}:4443`);
+      var configuration = {
+        sockets  : [ socket ],
+        uri      : `sip:${user.value.trim()}@${ipAddress.value.trim()}`,
+        password : password.value.trim()
+      };
+
+      var ua = new JsSIP.UA(configuration);
+      ua.start(); // start UA
+
+
+      /**
+      * UA Event
+      */
+      ua.on('connected', function(e){ /* Your code here */ 
+        console.log('connected : '+e);
+        console.log(e);
+      });
+
+      ua.on('registered', function(e){ /* Your code here */ 
+        console.log('registered : '+e);
+        console.log(e);
+        let response = e.response; 
+        let fromUri = response.from._uri;
+
+        profile.innerText = fromUri._user; // user profile
+        if(response.status_code==200){
+          state.style.color = "green";
+        }
+
+      });
+
+      ua.on('registrationFailed', function(e){ /* Your code here */ 
+        console.log('registrationFailed : '+e);
+        let response = e.response;
+        let fromUri = response.from.uri;
+        state.style.color = "red"; // change color
+        console.log(e);
+        
+      });
+
+      ua.on('newRTCSession', function(data){ /* Your code here */ 
+        console.log('Incoming call : ');
+        let originator = data.originator;
+        let request = data.request;
+        let dataSession = data.session
+        console.log('Request : ', request)
+        console.log('originator : ', originator)
+        console.log('dataSession : ', dataSession)
+
+        if(originator==='local'){
+          state.innerText+= "Calling "+request.to._uri._user; // change color
+        }
+        if(originator==='remote'){
+          state.innerText+= "Call from "+request.from._uri._user; // change color
+        }
+
+
+        ansBtn.addEventListener('click',(e)=>{
+          e.preventDefault();
+          dataSession.answer();
+          console.log('call answered');
+          //handleSession(session)
+        })
+
+      });
+
+
+      // Call btn 
+      callBtn.addEventListener('click',(e)=>{
+        e.preventDefault();
+        let number = screen.innerText.trim();
+        session = ua.call(`sip:${number}@${ipAddress.value.trim()}`, options);
+        //handleSession(newSession)
+        console.log('call started');
+      })
+    })
+
+    // click dial btn
+    btn.forEach((butn)=>{
+      butn.addEventListener('click',(e)=>{
+        e.preventDefault();
+        screen.innerText += e.target.value;
+      })
+    })
+
+    remove.addEventListener('click',(e)=>{
+      e.preventDefault();
+      let value = screen.innerText.split('');
+      value.pop();
+      value = value.join('');
+      screen.innerText = value;
+    })
+
+    
+
+    
+
+    // function  handleSession(session){
+
+    //   console.log("Handle session");
+
+    //   session.on('progress',function(e) {
+    //     console.log(e);
+    //   })
+
+    //   session.on('accepted',function(e) {
+    //     console.log('Call Accepted with details below');
+    //     console.log(e);
+    //   })
+
+    //   session.on('confirmed',function(e) {
+    //     console.log(e);
+
+    //   })
+
+    //   session.on('addstream',function(e) {
+    //     console.log('Reached in Add Stream');
+    //     console.log(e.stream);
+    //     if ('srcObject' in video) {
+    //       video.srcObject = e.stream;
+    //     } else {
+    //       video.src = window.URL.createObjectURL(e.stream); // for older browsers
+    //     }
+    //     console.log('VIDEO :',video)
+    //     video.play()
+
+    //   })
+
+    //   session.on('failed',function(e) {
+    //     console.log('Call Failed with reason below');
+    //     console.log(e);
+    //   })
+
+    //   session.on('ended',function(e) {
+    //     console.log("Call Ended with details below: ");
+    //     console.log(e);
+    //   })
+    // }
+
+   
+
+  </script>
+</body>
+</html>
